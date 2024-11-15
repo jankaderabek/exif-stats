@@ -262,11 +262,11 @@ const extractExifData = async (fileHandle) => {
   }
 
   try {
-    const metadata = await exifr.parse(file, ['FocalLength', 'FNumber', 'Make', 'Model', 'LensModel'])
+    const metadata = await exifr.parse(file, ['FocalLength', 'FNumber', 'Make', 'Model', 'LensMake', 'LensModel'])
 
     if (metadata) {
-      const camera = `${metadata.Make || 'Unknown'} ${metadata.Model || 'Model'}`
-      const lens = metadata.LensModel || 'Unknown Lens'
+      const camera = `${metadata.Make || 'Unknown'} ${metadata.Model || 'camera'}`
+      const lens = `${metadata.LensMake || 'Unknown'} ${metadata.LensModel || 'lens'}`
 
       allData.value.push({
         focalLength: metadata.FocalLength,
