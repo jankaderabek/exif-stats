@@ -30,8 +30,11 @@
       </div>
 
       <!-- Filters -->
-      <div class="flex flex-col md:flex-row gap-4">
-        <UFormField label="Filter by camera">
+      <div
+        v-if="Object.keys(cameraCounts).length > 1 || Object.keys(lensCounts).length > 1"
+        class="flex flex-col md:flex-row gap-4"
+      >
+        <UFormField label="Filter by camera" v-if="Object.keys(cameraCounts).length > 1">
           <USelect
               class="min-w-64"
               v-model="selectedCamera"
@@ -40,7 +43,7 @@
           </USelect>
         </UFormField>
 
-        <UFormField label="Filter by lens">
+        <UFormField label="Filter by lens" v-if="Object.keys(lensCounts).length > 1">
           <USelect
               class="min-w-64"
               v-model="selectedLens"
