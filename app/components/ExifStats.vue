@@ -11,7 +11,7 @@
     <div v-show="!isLoading && totalPhotos > 0">
       <p class="text-sm text-gray-700 mb-4">Total Photos Processed: {{ totalPhotos }}</p>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <UCard class="p-4">
+        <UCard>
           <h3 class="text-lg font-semibold mb-3">Camera Statistics</h3>
           <ul class="list-disc pl-4">
             <li v-for="(count, camera) in cameraCounts" :key="camera">
@@ -19,7 +19,7 @@
             </li>
           </ul>
         </UCard>
-        <UCard class="p-4">
+        <UCard>
           <h3 class="text-lg font-semibold mb-3">Lens Statistics</h3>
           <ul class="list-disc pl-4">
             <li v-for="(count, lens) in lensCounts" :key="lens">
@@ -60,8 +60,14 @@
       </div>
 
       <!-- Graphs -->
-      <canvas ref="focalLengthChart" width="400" height="200" class="mb-6"></canvas>
-      <canvas ref="apertureChart" width="400" height="200"></canvas>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <canvas ref="focalLengthChart" class="mb-6"></canvas>
+        </div>
+        <div>
+          <canvas ref="apertureChart"></canvas>
+        </div>
+      </div>
     </div>
   </div>
 </template>
