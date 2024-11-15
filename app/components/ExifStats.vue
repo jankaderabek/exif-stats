@@ -121,12 +121,38 @@ const gatherAllFiles = async (directoryHandle) => {
   return fileHandles
 }
 
+const colorPalette = [
+  'rgba(91, 192, 222, 0.6)', // Light Blue
+  'rgba(240, 173, 78, 0.6)', // Amber
+  'rgba(92, 184, 92, 0.6)',  // Green
+  'rgba(217, 83, 79, 0.6)',  // Red
+  'rgba(155, 89, 182, 0.6)', // Purple
+  'rgba(52, 152, 219, 0.6)', // Sky Blue
+  'rgba(241, 196, 15, 0.6)', // Yellow
+  'rgba(39, 174, 96, 0.6)',  // Emerald
+  'rgba(231, 76, 60, 0.6)',  // Alizarin
+  'rgba(52, 73, 94, 0.6)',   // Midnight Blue
+]
+
+const lensColorMap = {}
+
+const getLensColor = (lens) => {
+  if (!lensColorMap[lens]) {
+    // Randomly select a color from the palette
+    const randomIndex = Math.floor(Math.random() * colorPalette.length)
+    lensColorMap[lens] = colorPalette[randomIndex]
+  }
+  return lensColorMap[lens]
+}
+
+
 // Render graphs
 const renderCharts = async () => {
   await nextTick()
 
-  const filteredFocalLengths = filteredData.value.map(item => Math.round(item.focalLength))
-  const filteredApertures = filteredData.value.map(item => parseFloat(item.aperture))
+  // Filtered data for charts
+  const filteredFocalLengths = filteredData.value
+  const filteredApertures = filteredData.value
 
   // Destroy existing charts
   if (focalLengthChartInstance) {
@@ -142,6 +168,7 @@ const renderCharts = async () => {
   focalLengthChartInstance = createFocalLengthChart(filteredFocalLengths)
   apertureChartInstance = createApertureChart(filteredApertures)
 }
+
 
 // Watch filters to update graphs
 watch([selectedCamera, selectedLens], () => {
@@ -220,63 +247,113 @@ const extractExifData = async (fileHandle) => {
 }
 
 // Create charts
-const createFocalLengthChart = (filteredFocalLengths) => {
-  const focalLengthCounts = filteredFocalLengths.reduce((counts, length) => {
-    counts[length] = (counts[length] || 0) + 1
-    return counts
-  }, {})
+const createFocalLengthChart = (filteredData) => {
+  const groupedData = {}
+  filteredData.forEach(item => {
+    const focalLength = Math.round(item.focalLength)
+    const lens = item.lens
 
-  const sortedFocalLengths = Object.entries(focalLengthCounts).sort((a, b) => a[0] - b[0])
-  const labels = sortedFocalLengths.map(entry => entry[0])
-  const data = sortedFocalLengths.map(entry => entry[1])
+    if (!groupedData[focalLength]) {
+      groupedData[focalLength] = {}
+    }
+    groupedData[focalLength][lens] = (groupedData[focalLength][lens] || 0) + 1
+  })
+
+  const lenses = [...new Set(filteredData.map(item => item.lens))]
+  const labels = Object.keys(groupedData).sort((a, b) => a - b)
+  const datasets = lenses.map(lens => {
+    const data = labels.map(focalLength => groupedData[focalLength]?.[lens] || 0)
+    return {
+      label: lens,
+      data,
+      backgroundColor: getLensColor(lens),
+    }
+  })
 
   return new Chart(focalLengthChart.value.getContext('2d'), {
     type: 'bar',
     data: {
       labels,
-      datasets: [{
-        label: 'Focal Length Frequency',
-        data,
-        backgroundColor: 'rgba(54, 162, 235, 0.6)',
-        borderColor: 'rgba(54, 162, 235, 1)',
-        borderWidth: 1
-      }]
+      datasets
     },
     options: {
+      plugins: {
+        title: {
+          display: true,
+          text: 'Focal Length Distribution by Lens'
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false
+        }
+      },
+      responsive: true,
       scales: {
-        y: { beginAtZero: true, title: { display: true, text: 'Frequency' } },
-        x: { title: { display: true, text: 'Focal Length (mm)' } }
+        x: {
+          stacked: true,
+          title: { display: true, text: 'Focal Length (mm)' }
+        },
+        y: {
+          stacked: true,
+          title: { display: true, text: 'Frequency' },
+          beginAtZero: true
+        }
       }
     }
   })
 }
 
-const createApertureChart = (filteredApertures) => {
-  const apertureCounts = filteredApertures.reduce((counts, aperture) => {
-    counts[aperture] = (counts[aperture] || 0) + 1
-    return counts
-  }, {})
+const createApertureChart = (filteredData) => {
+  const groupedData = {}
+  filteredData.forEach(item => {
+    const aperture = parseFloat(item.aperture).toFixed(1)
+    const lens = item.lens
 
-  const sortedApertures = Object.entries(apertureCounts).sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]))
-  const labels = sortedApertures.map(entry => entry[0])
-  const data = sortedApertures.map(entry => entry[1])
+    if (!groupedData[aperture]) {
+      groupedData[aperture] = {}
+    }
+    groupedData[aperture][lens] = (groupedData[aperture][lens] || 0) + 1
+  })
+
+  const lenses = [...new Set(filteredData.map(item => item.lens))]
+  const labels = Object.keys(groupedData).sort((a, b) => parseFloat(a) - parseFloat(b))
+  const datasets = lenses.map(lens => {
+    const data = labels.map(aperture => groupedData[aperture]?.[lens] || 0)
+    return {
+      label: lens,
+      data,
+      backgroundColor: getLensColor(lens),
+    }
+  })
 
   return new Chart(apertureChart.value.getContext('2d'), {
     type: 'bar',
     data: {
       labels,
-      datasets: [{
-        label: 'Aperture Frequency (f-stop)',
-        data,
-        backgroundColor: 'rgba(255, 159, 64, 0.6)',
-        borderColor: 'rgba(255, 159, 64, 1)',
-        borderWidth: 1
-      }]
+      datasets
     },
     options: {
+      plugins: {
+        title: {
+          display: true,
+          text: 'Aperture Distribution by Lens'
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false
+        }
+      },
+      responsive: true,
       scales: {
-        y: { beginAtZero: true, title: { display: true, text: 'Frequency' } },
-        x: { title: { display: true, text: 'Aperture (f-stop)' } }
+        x: {
+          stacked: true,
+          title: { display: true, text: 'Aperture (f-stop)' }
+        },
+        y: {
+          stacked: true,
+          title: { display: true, text: 'Frequency' },
+          beginAtZero: true
+        }
       }
     }
   })
@@ -285,9 +362,3 @@ const createApertureChart = (filteredApertures) => {
 // Progress bar calculation
 const progress = computed(() => (currentProgress.value / totalPhotos.value) * 100)
 </script>
-
-<style>
-.loading-indicator {
-  margin-top: 20px;
-}
-</style>
