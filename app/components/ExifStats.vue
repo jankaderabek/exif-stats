@@ -6,11 +6,11 @@
     </UButton>
     <div v-if="isLoading" class="mb-6">
       <p class="text-sm text-gray-700">Processing photos: {{ currentProgress }}/{{ totalPhotos }}</p>
-      <UProgress :value="progress" />
+      <UProgress :value="progress"/>
     </div>
-    <div v-show="!isLoading && totalPhotos > 0">
-      <p class="text-sm text-gray-700 mb-4">Total Photos Processed: {{ totalPhotos }}</p>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+    <div v-show="!isLoading && totalPhotos > 0" class="flex flex-col gap-6">
+      <p class="text-sm text-gray-700">Total Photos Processed: {{ totalPhotos }}</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <UCard>
           <h3 class="text-lg font-semibold mb-3">Camera Statistics</h3>
           <ul class="list-disc pl-4">
@@ -30,33 +30,24 @@
       </div>
 
       <!-- Filters -->
-      <div class="flex flex-col md:flex-row gap-4 mb-6">
-        <div>
-          <label for="camera-filter" class="block text-sm font-medium text-gray-700">Filter by Camera</label>
-          <select
-              id="camera-filter"
+      <div class="flex flex-col md:flex-row gap-4">
+        <UFormField label="Filter by camera">
+          <USelect
+              class="min-w-64"
               v-model="selectedCamera"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+              :items="[{label: 'All cameras', value: null}, ...Object.keys(cameraCounts).map((camera) => ({ label: camera, value: camera }))]"
           >
-            <option :value="null">All Cameras</option>
-            <option v-for="(count, camera) in cameraCounts" :key="camera" :value="camera">
-              {{ camera }}
-            </option>
-          </select>
-        </div>
-        <div>
-          <label for="lens-filter" class="block text-sm font-medium text-gray-700">Filter by Lens</label>
-          <select
-              id="lens-filter"
+          </USelect>
+        </UFormField>
+
+        <UFormField label="Filter by lens">
+          <USelect
+              class="min-w-64"
               v-model="selectedLens"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+              :items="[{label: 'All lenses', value: null}, ...Object.keys(lensCounts).map((lens) => ({ label: lens, value: lens }))]"
           >
-            <option :value="null">All Lenses</option>
-            <option v-for="(count, lens) in lensCounts" :key="lens" :value="lens">
-              {{ lens }}
-            </option>
-          </select>
-        </div>
+          </USelect>
+        </UFormField>
       </div>
 
       <!-- Graphs -->
@@ -73,9 +64,9 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, watch } from 'vue'
+import {ref, computed, nextTick, watch} from 'vue'
 import * as exifr from 'exifr'
-import { Chart, BarController, BarElement, CategoryScale, LinearScale, Title, Tooltip } from 'chart.js'
+import {Chart, BarController, BarElement, CategoryScale, LinearScale, Title, Tooltip} from 'chart.js'
 
 // Register Chart.js components
 Chart.register(BarController, BarElement, CategoryScale, LinearScale, Title, Tooltip)
@@ -297,11 +288,11 @@ const createFocalLengthChart = (filteredData) => {
       scales: {
         x: {
           stacked: true,
-          title: { display: true, text: 'Focal Length (mm)' }
+          title: {display: true, text: 'Focal Length (mm)'}
         },
         y: {
           stacked: true,
-          title: { display: true, text: 'Frequency' },
+          title: {display: true, text: 'Frequency'},
           beginAtZero: true
         }
       }
@@ -353,11 +344,11 @@ const createApertureChart = (filteredData) => {
       scales: {
         x: {
           stacked: true,
-          title: { display: true, text: 'Aperture (f-stop)' }
+          title: {display: true, text: 'Aperture (f-stop)'}
         },
         y: {
           stacked: true,
-          title: { display: true, text: 'Frequency' },
+          title: {display: true, text: 'Frequency'},
           beginAtZero: true
         }
       }
