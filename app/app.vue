@@ -1,5 +1,5 @@
 <template>
-  <div>
-    <ExifStats />
-  </div>
+  <UApp>
+    <NuxtPage />
+  </UApp>
 </template>
