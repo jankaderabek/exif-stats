@@ -1,15 +1,23 @@
 <template>
-  <div class="p-6">
-    <h1 class="text-2xl font-bold mb-4">Focal Length and Aperture Statistics</h1>
-    <UButton @click="selectFolder" :disabled="isLoading" class="mb-6">
-      {{ isLoading ? 'Processing...' : 'Select Folder' }}
-    </UButton>
-    <div v-if="isLoading" class="mb-6">
-      <p class="text-sm text-gray-700">Processing photos: {{ currentProgress }}/{{ totalPhotos }}</p>
-      <UProgress :value="progress"/>
+  <div class="p-6 flex flex-col gap-6">
+    <div class="flex flex-col gap-4">
+      <h1 class="text-2xl font-bold">Focal Length and Aperture Statistics</h1>
+      <p class="text-sm text-gray-700">
+        Select a folder to process images. If your browser does not support directory selection,
+        a file input dialog will open instead. All processing is done locally in your browser; no data is sent to any server.
+      </p>
+
+      <UButton @click="selectFolder" :disabled="isLoading" class="w-fit">
+        {{ isLoading ? 'Processing...' : 'Select Folder' }}
+      </UButton>
+
+      <div v-if="isLoading">
+        <p class="text-sm text-gray-700">Processing photos: {{ currentProgress }}/{{ totalPhotos }}</p>
+        <UProgress :value="progress"/>
+      </div>
     </div>
+
     <div v-show="!isLoading && totalPhotos > 0" class="flex flex-col gap-6">
-      <p class="text-sm text-gray-700">Total Photos Processed: {{ totalPhotos }}</p>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <UCard>
           <h3 class="text-lg font-semibold mb-3">Camera Statistics</h3>
@@ -103,7 +111,8 @@ const filteredData = computed(() => {
   })
 })
 
-// Gather all files from the directory and subdirectories
+// Helper Functions
+
 const gatherAllFiles = async (directoryHandle) => {
   const fileHandles = []
 
@@ -121,30 +130,85 @@ const gatherAllFiles = async (directoryHandle) => {
   return fileHandles
 }
 
-const colorPalette = [
-  'rgba(91, 192, 222, 0.6)', // Light Blue
-  'rgba(240, 173, 78, 0.6)', // Amber
-  'rgba(92, 184, 92, 0.6)',  // Green
-  'rgba(217, 83, 79, 0.6)',  // Red
-  'rgba(155, 89, 182, 0.6)', // Purple
-  'rgba(52, 152, 219, 0.6)', // Sky Blue
-  'rgba(241, 196, 15, 0.6)', // Yellow
-  'rgba(39, 174, 96, 0.6)',  // Emerald
-  'rgba(231, 76, 60, 0.6)',  // Alizarin
-  'rgba(52, 73, 94, 0.6)',   // Midnight Blue
-]
+const processDirectory = async (dirHandle) => {
+  focalLengths.value = []
+  apertures.value = []
+  allData.value = []
+  totalPhotos.value = 0
+  currentProgress.value = 0
+  isLoading.value = true
+  cameraCounts.value = {}
+  lensCounts.value = {}
+  selectedCamera.value = null
+  selectedLens.value = null
+
+  const fileHandles = await gatherAllFiles(dirHandle)
+  totalPhotos.value = fileHandles.length
+
+  await processFilesConcurrently(fileHandles)
+  await renderCharts()
+  isLoading.value = false
+}
+
+const processFiles = async (files) => {
+  focalLengths.value = []
+  apertures.value = []
+  allData.value = []
+  totalPhotos.value = files.length
+  currentProgress.value = 0
+  isLoading.value = true
+  cameraCounts.value = {}
+  lensCounts.value = {}
+  selectedCamera.value = null
+  selectedLens.value = null
+
+  const promises = files.map(async (file) => {
+    await extractExifData(file)
+    currentProgress.value++
+  })
+
+  await Promise.all(promises)
+  await renderCharts()
+  isLoading.value = false
+}
 
 const lensColorMap = {}
 
+const getRandomColor = () => {
+  const r = Math.floor(Math.random() * 255)
+  const g = Math.floor(Math.random() * 255)
+  const b = Math.floor(Math.random() * 255)
+  return `rgba(${r}, ${g}, ${b}, 0.6)`
+}
+
 const getLensColor = (lens) => {
   if (!lensColorMap[lens]) {
-    // Randomly select a color from the palette
-    const randomIndex = Math.floor(Math.random() * colorPalette.length)
-    lensColorMap[lens] = colorPalette[randomIndex]
+    lensColorMap[lens] = getRandomColor()
   }
   return lensColorMap[lens]
 }
 
+
+const selectFolder = async () => {
+  if (window.showDirectoryPicker) {
+    try {
+      const dirHandle = await window.showDirectoryPicker()
+      await processDirectory(dirHandle)
+    } catch (error) {
+      console.error('Error accessing directory:', error)
+    }
+  } else {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.multiple = true
+    input.onchange = async (event) => {
+      const files = Array.from(event.target.files)
+      await processFiles(files)
+    }
+    input.click()
+  }
+}
 
 // Render graphs
 const renderCharts = async () => {
@@ -175,32 +239,6 @@ watch([selectedCamera, selectedLens], () => {
   renderCharts()
 })
 
-// Folder selection
-const selectFolder = async () => {
-  try {
-    const dirHandle = await window.showDirectoryPicker()
-    focalLengths.value = []
-    apertures.value = []
-    allData.value = []
-    totalPhotos.value = 0
-    currentProgress.value = 0
-    isLoading.value = true
-    cameraCounts.value = {}
-    lensCounts.value = {}
-    selectedCamera.value = null
-    selectedLens.value = null
-
-    const fileHandles = await gatherAllFiles(dirHandle)
-    totalPhotos.value = fileHandles.length
-
-    await processFilesConcurrently(fileHandles)
-    await renderCharts()
-  } catch (error) {
-    console.error('Error accessing directory:', error)
-  } finally {
-    isLoading.value = false
-  }
-}
 
 // Process files concurrently
 const processFilesConcurrently = async (fileHandles) => {
@@ -214,7 +252,15 @@ const processFilesConcurrently = async (fileHandles) => {
 
 // Extract EXIF data
 const extractExifData = async (fileHandle) => {
-  const file = await fileHandle.getFile()
+  let file
+
+  // Determine if fileHandle is a File or FileSystemFileHandle
+  if (fileHandle.getFile) {
+    file = await fileHandle.getFile()
+  } else {
+    file = fileHandle // It's already a File
+  }
+
   try {
     const metadata = await exifr.parse(file, ['FocalLength', 'FNumber', 'Make', 'Model', 'LensModel'])
 
